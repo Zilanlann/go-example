@@ -11,16 +11,17 @@ type H map[string]interface{}
 
 // Context is a structure that wraps detailed information about an HTTP request and response
 type Context struct {
-	// Origin objects
-	Writer http.ResponseWriter // Interface for HTTP response
-	Req    *http.Request       // Pointer to the HTTP request
+	Writer     http.ResponseWriter
+	Req        *http.Request
+	Params     map[string]string
+	Path       string
+	Method     string
+	StatusCode int
+}
 
-	// Request info
-	Path   string // The path of the request
-	Method string // The method of the request (e.g., GET, POST)
-
-	// Response info
-	StatusCode int // HTTP response status code
+func (c *Context) Param(key string) string {
+	value := c.Params[key]
+	return value
 }
 
 // newContext is a constructor function for Context to initialize a Context object
