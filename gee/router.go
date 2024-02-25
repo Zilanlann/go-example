@@ -81,15 +81,17 @@ func (r *router) getRoute(method string, path string) (*node, map[string]string)
 	return nil, nil // No matching route found
 }
 
-// handle is a method on router that takes a Context (a struct that holds request info)
-// and executes the appropriate handler based on the request method and path.
 func (r *router) handle(c *Context) {
 	n, params := r.getRoute(c.Method, c.Path)
+
 	if n != nil {
-		c.Params = params
 		key := c.Method + "-" + n.pattern
-		r.handlers[key](c)
+		c.Params = params
+		c.handlers = append(c.handlers, r.handlers[key])
 	} else {
-		c.String(http.StatusNotFound, "404 NOT FOUND: %s\n", c.Path)
+		c.handlers = append(c.handlers, func(c *Context) {
+			c.String(http.StatusNotFound, "404 NOT FOUND: %s\n", c.Path)
+		})
 	}
+	c.Next()
 }

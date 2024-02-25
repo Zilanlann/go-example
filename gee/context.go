@@ -9,29 +9,43 @@ import (
 // H is a convenient alias for constructing JSON data
 type H map[string]interface{}
 
-// Context is a structure that wraps detailed information about an HTTP request and response
 type Context struct {
 	Writer     http.ResponseWriter
 	Req        *http.Request
 	Params     map[string]string
 	Path       string
 	Method     string
+	handlers   []HandlerFunc
 	StatusCode int
+	index      int
+}
+
+func newContext(w http.ResponseWriter, req *http.Request) *Context {
+	return &Context{
+		Path:   req.URL.Path,
+		Method: req.Method,
+		Req:    req,
+		Writer: w,
+		index:  -1,
+	}
+}
+
+func (c *Context) Next() {
+	c.index++
+	s := len(c.handlers)
+	for ; c.index < s; c.index++ {
+		c.handlers[c.index](c)
+	}
+}
+
+func (c *Context) Fail(code int, err string) {
+	c.index = len(c.handlers)
+	c.JSON(code, H{"message": err})
 }
 
 func (c *Context) Param(key string) string {
 	value := c.Params[key]
 	return value
-}
-
-// newContext is a constructor function for Context to initialize a Context object
-func newContext(w http.ResponseWriter, req *http.Request) *Context {
-	return &Context{
-		Writer: w,
-		Req:    req,
-		Path:   req.URL.Path,
-		Method: req.Method,
-	}
 }
 
 // PostForm retrieves data from a submitted form
