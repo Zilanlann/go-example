@@ -9,6 +9,7 @@ import (
 // H is a convenient alias for constructing JSON data
 type H map[string]interface{}
 
+// Context represents the context of a single HTTP request.
 type Context struct {
 	Writer     http.ResponseWriter
 	Req        *http.Request
@@ -18,8 +19,11 @@ type Context struct {
 	handlers   []HandlerFunc
 	StatusCode int
 	index      int
+	engine     *Engine
 }
 
+// newContext creates a new Context object with the provided http.ResponseWriter and *http.Request.
+// It initializes the Path, Method, Req, Writer, and index fields of the Context.
 func newContext(w http.ResponseWriter, req *http.Request) *Context {
 	return &Context{
 		Path:   req.URL.Path,
@@ -30,6 +34,9 @@ func newContext(w http.ResponseWriter, req *http.Request) *Context {
 	}
 }
 
+// Next advances the context to the next middleware/handler in the chain.
+// It calls the next middleware/handler in the chain by incrementing the index
+// and invoking the corresponding handler function.
 func (c *Context) Next() {
 	c.index++
 	s := len(c.handlers)
@@ -38,11 +45,15 @@ func (c *Context) Next() {
 	}
 }
 
+// Fail is a method of the Context struct that is used to handle a failed request.
+// It sets the index of the handlers to the length of the handlers slice and
+// responds with a JSON object containing the specified error message and status code.
 func (c *Context) Fail(code int, err string) {
 	c.index = len(c.handlers)
 	c.JSON(code, H{"message": err})
 }
 
+// Param returns the value of the specified parameter key from the Context's Params map.
 func (c *Context) Param(key string) string {
 	value := c.Params[key]
 	return value
@@ -95,8 +106,10 @@ func (c *Context) Data(code int, data []byte) {
 }
 
 // HTML sends a response in HTML format
-func (c *Context) HTML(code int, html string) {
-	c.SetHeader("Content-Type", "text/html") // Set response type as HTML
-	c.Status(code)                           // Set response status code
-	c.Writer.Write([]byte(html))             // Send HTML content
+func (c *Context) HTML(code int, name string, data interface{}) {
+	c.SetHeader("Content-Type", "text/html")
+	c.Status(code)
+	if err := c.engine.htmlTemplates.ExecuteTemplate(c.Writer, name, data); err != nil {
+		c.Fail(500, err.Error())
+	}
 }
